@@ -28,8 +28,8 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def token_auth(request: Request, call_next):
         path = request.url.path
-        # Skip auth for health check
-        if path == "/health":
+        # Skip auth for health check and static assets
+        if path == "/health" or path.startswith("/static/"):
             return await call_next(request)
         # Check token from query param or header
         token = request.query_params.get("token") or request.headers.get(
