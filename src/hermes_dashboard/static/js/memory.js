@@ -114,7 +114,7 @@
         function saveFile(name, content, btn) {
             btn.disabled = true;
             btn.textContent = "Saving...";
-            fetch("/api/memory/" + encodeURIComponent(name), {
+            fetch(window.apiPath("/api/memory/" + encodeURIComponent(name)), {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ content: content }),

@@ -32,8 +32,19 @@
         });
     }
 
+    function getToken() {
+        return new URLSearchParams(window.location.search).get("token") || "";
+    }
+
+    function apiPath(path) {
+        const token = getToken();
+        if (!token) return path;
+        const sep = path.includes("?") ? "&" : "?";
+        return path + sep + "token=" + encodeURIComponent(token);
+    }
+
     async function fetchApi(path) {
-        const resp = await fetch(path);
+        const resp = await fetch(apiPath(path));
         if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
         return resp.json();
     }
@@ -60,7 +71,7 @@
 
     // SSE helper
     window.createSSE = function (url, onData) {
-        const es = new EventSource(url);
+        const es = new EventSource(apiPath(url));
         es.onmessage = (e) => {
             try { onData(JSON.parse(e.data)); } catch { onData(e.data); }
         };
@@ -68,4 +79,5 @@
         return es;
     };
     window.fetchApi = fetchApi;
+    window.apiPath = apiPath;
 })();
