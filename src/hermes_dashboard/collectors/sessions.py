@@ -107,8 +107,10 @@ def search_sessions(query: str, limit: int = 20) -> list[dict]:
         conn = sqlite3.connect(str(settings.state_db))
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            "SELECT session_id, role, content, timestamp "
-            "FROM messages WHERE messages MATCH ? "
+            "SELECT m.session_id, m.role, m.content, m.timestamp "
+            "FROM messages_fts fts "
+            "JOIN messages m ON m.id = fts.rowid "
+            "WHERE messages_fts MATCH ? "
             "ORDER BY rank LIMIT ?",
             (query, limit),
         ).fetchall()
