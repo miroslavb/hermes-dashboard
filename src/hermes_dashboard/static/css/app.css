@@ -1,0 +1,32 @@
+/* Hermes Dashboard — Base Styles */
+:root {
+    --bg-primary: #1a1a2e;
+    --bg-card: #16213e;
+    --bg-accent: #0f3460;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --border: #2a2a4a;
+    --green: #00d4aa;
+    --red: #ff6b6b;
+    --yellow: #ffd93d;
+    --blue: #4ea8de;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+header { background: var(--bg-card); padding: 1rem 2rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 2rem; }
+header h1 { font-size: 1.2rem; white-space: nowrap; }
+nav { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+nav a { color: var(--text-secondary); text-decoration: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; transition: all 0.2s; }
+nav a:hover, nav a.active { background: var(--bg-accent); color: var(--green); }
+main { padding: 1.5rem 2rem; }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1rem; }
+.card h2 { font-size: 1rem; color: var(--green); margin-bottom: 0.5rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+.mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85rem; }
+.log-box { background: #0d1117; border-radius: 6px; padding: 1rem; max-height: 500px; overflow-y: auto; }
+.log-box .line { white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+.stat-value { font-size: 2rem; font-weight: 700; }
+.stat-label { font-size: 0.8rem; color: var(--text-secondary); }
+.progress-bar { height: 8px; background: var(--bg-primary); border-radius: 4px; overflow: hidden; margin-top: 0.5rem; }
+.progress-bar .fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+@media (max-width: 768px) { header { flex-direction: column; padding: 1rem; } main { padding: 1rem; } }
