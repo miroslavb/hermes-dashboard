@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from hermes_dashboard.config import settings
 from hermes_dashboard.schemas import MemoryFile
 

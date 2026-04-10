@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 
 import psutil
@@ -14,7 +13,6 @@ from hermes_dashboard.schemas import ProcessInfo
 def list_hermes_processes() -> list[ProcessInfo]:
     """Find processes related to Hermes agent."""
     results = []
-    hermes_home_str = str(settings.hermes_home)
 
     for proc in psutil.process_iter(
         ["pid", "name", "cpu_percent", "memory_info", "cmdline", "create_time"]

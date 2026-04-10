@@ -1,0 +1,15 @@
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hermes-dashboard
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    volumes:
+      - ${HOME}/.hermes:/data/.hermes:ro
+    environment:
+      - DASHBOARD_HOST=0.0.0.0
+      - DASHBOARD_PORT=8090
+      - HERMES_HOME=/data/.hermes
