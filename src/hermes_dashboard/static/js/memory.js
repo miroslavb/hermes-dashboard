@@ -2,9 +2,9 @@
 (function () {
     "use strict";
 
-    function formatDate(iso) {
-        if (!iso) return "—";
-        const d = new Date(iso);
+    function formatDate(ts) {
+        if (!ts) return "—";
+        const d = typeof ts === "number" ? new Date(ts * 1000) : new Date(ts);
         return d.toLocaleDateString() + " " + d.toLocaleTimeString();
     }
 

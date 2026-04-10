@@ -4,9 +4,10 @@
 
     let sse = null;
 
-    function formatDate(iso) {
-        if (!iso) return "—";
-        return new Date(iso).toLocaleString();
+    function formatDate(ts) {
+        if (!ts) return "—";
+        const d = typeof ts === "number" ? new Date(ts * 1000) : new Date(ts);
+        return d.toLocaleString();
     }
 
     function buildLogSelector(logs, onSelect) {
