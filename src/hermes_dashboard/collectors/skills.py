@@ -29,9 +29,7 @@ def list_categories() -> list[SkillCategory]:
         # Count skills (SKILL.md files recursively)
         skill_count = len(list(d.rglob("SKILL.md")))
 
-        categories.append(
-            SkillCategory(name=d.name, description=desc, skill_count=skill_count)
-        )
+        categories.append(SkillCategory(name=d.name, description=desc, skill_count=skill_count))
 
     return categories
 

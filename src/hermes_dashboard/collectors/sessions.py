@@ -83,8 +83,7 @@ def get_session(session_id: str) -> SessionDetail | None:
             conn = sqlite3.connect(str(settings.state_db))
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
-                "SELECT role, content, timestamp FROM messages "
-                "WHERE session_id = ? ORDER BY rowid",
+                "SELECT role, content, timestamp FROM messages WHERE session_id = ? ORDER BY rowid",
                 (session_id,),
             ).fetchall()
             conn.close()

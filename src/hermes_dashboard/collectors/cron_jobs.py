@@ -45,9 +45,7 @@ def list_cron_output(limit: int = 20) -> list[dict]:
         return []
 
     results = []
-    for f in sorted(
-        output_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True
-    )[:limit]:
+    for f in sorted(output_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True)[:limit]:
         if f.is_file():
             stat = f.stat()
             results.append(
