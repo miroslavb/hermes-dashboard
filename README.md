@@ -1,6 +1,6 @@
 # 🖥 Hermes Dashboard
 
-Real-time web dashboard for monitoring the [Hermes](https://github.com/nousresearch/hermes-agent) agent runtime.
+Real-time web dashboard for monitoring [Hermes](https://github.com/nousresearch/hermes-agent) agent runtimes. Supports multiple agents with per-agent filtering across all panels.
 
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
@@ -8,20 +8,22 @@ Real-time web dashboard for monitoring the [Hermes](https://github.com/nousresea
 
 ## Features
 
-- 📊 **System Resources** — CPU, RAM, disk, network in real-time (SSE)
-- 🧠 **Memory** — View/edit MEMORY.md and USER.md
-- 🛠 **Skills** — Browse 27 skill categories, view SKILL.md files
-- 💬 **Sessions** — Browse and search session transcripts (FTS)
-- ⚡ **Processes** — Active tool calls and subagents
-- ⏰ **Cron** — Scheduled jobs and their status
-- 📋 **Logs** — Live-tail gateway, agent, and error logs (SSE)
+- 📊 **System Resources** — CPU, RAM, disk, network in real-time (SSE) with Chart.js graphs
+- 🧠 **Memory** — View/edit MEMORY.md, USER.md, SOUL.md per agent (SOUL.md read-only)
+- 🛠 **Skills** — Browse skill categories per agent, view full SKILL.md content
+- 💬 **Sessions** — Browse session transcripts per agent
+- ⚡ **Processes** — Active OS processes and gateway status
+- ⏰ **Cron** — Scheduled jobs per agent with output viewer
+- 📋 **Logs** — Live-tail logs per agent (SSE)
+- 💾 **Backup** — Snapshot list, manual run trigger, restore command generator
+- 🔄 **Multi-Agent** — Agent selector dropdown filters all panels by specific agent or shows all
 
 ## Quick Start
 
 ```bash
 pip install -e ".[dev]"
-hermes-dashboard
-# → http://localhost:8090
+DASHBOARD_TOKEN=your-secret hermes-dashboard
+# → http://localhost:8090?token=your-secret
 ```
 
 ## Docker
@@ -35,33 +37,70 @@ docker compose up -d
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `HERMES_HOME` | `~/.hermes` | Path to Hermes data directory |
+| `HERMES_HOME` | `~/.hermes` | Path to primary agent data directory |
+| `HERMES_HOME2` | `~/.hermes-agent2` | Path to secondary agent data directory |
 | `DASHBOARD_HOST` | `0.0.0.0` | Bind address |
 | `DASHBOARD_PORT` | `8090` | Listen port |
-| `DASHBOARD_AUTH_TOKEN` | _(none)_ | Bearer token for auth |
+| `DASHBOARD_TOKEN` | _(auto-generated)_ | Bearer token for auth |
 
 ## API Endpoints
 
+### System
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/system/status` | System metrics snapshot |
 | GET | `/api/system/stream` | SSE real-time metrics |
-| GET | `/api/sessions` | List sessions (paginated) |
-| GET | `/api/sessions/search?q=` | FTS search messages |
-| GET | `/api/sessions/{id}` | Full session transcript |
-| GET | `/api/skills` | List skill categories |
-| GET | `/api/skills/{category}` | Skills in category |
-| GET | `/api/skills/{cat}/{name}` | Full SKILL.md content |
-| GET | `/api/memory` | List memory files |
-| GET | `/api/memory/{file}` | Read memory file |
-| PUT | `/api/memory/{file}` | Update memory file |
-| GET | `/api/processes` | Active OS processes |
-| GET | `/api/processes/active` | Recently active sessions |
-| GET | `/api/cron` | List cron jobs |
-| GET | `/api/cron/output` | Recent cron output |
-| GET | `/api/logs` | List log files |
-| GET | `/api/logs/{name}` | Tail log file |
-| GET | `/api/logs/{name}/stream` | SSE live log tail |
+
+### Agents
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agents` | List all agents with session/skill/cron counts |
+
+### Sessions
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/sessions?agent=` | List sessions (optional `?agent=` filter) |
+| GET | `/api/sessions/{agent}/{id}` | Full session transcript |
+
+### Skills
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/skills?agent=` | List skill categories |
+| GET | `/api/skills/{agent}/{category}` | Skills in category |
+| GET | `/api/skills/{agent}/{cat}/{name}` | Full SKILL.md content |
+
+### Memory
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/memory?agent=` | List memory files grouped by agent |
+| GET | `/api/memory/{agent}/{name}` | Read specific memory file |
+| PUT | `/api/memory/{agent}/{name}` | Update memory file (SOUL.md is read-only) |
+
+### Processes
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/processes` | Active OS processes and gateway status |
+| GET | `/api/processes/stream` | SSE real-time process updates |
+
+### Cron
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/cron?agent=` | List cron jobs per agent |
+| GET | `/api/cron/output?agent=` | Recent cron job output |
+
+### Logs
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/logs?agent=` | List log files per agent |
+| GET | `/api/logs/{name}?agent=&lines=` | Tail log file |
+| GET | `/api/logs/{name}/stream?agent=` | SSE live log tail |
+
+### Backup
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/backup/status` | Backup status, snapshots, log |
+| POST | `/api/backup/run` | Trigger manual backup |
+| POST | `/api/backup/restore` | Get restore command for snapshot |
 
 ## Development
 
@@ -78,19 +117,42 @@ make format    # auto-fix lint + format
 ```
 hermes-dashboard/
 ├── src/hermes_dashboard/
-│   ├── app.py              # FastAPI factory
-│   ├── config.py           # Settings from env
+│   ├── app.py              # FastAPI factory + auth middleware + no-cache headers
+│   ├── config.py           # AgentConfig dataclass, multi-agent settings
 │   ├── schemas.py          # Pydantic models
-│   ├── collectors/         # Data source readers
+│   ├── collectors/         # Data source readers (all support agent_id param)
 │   │   ├── system.py       # psutil metrics
-│   │   ├── sessions.py     # state.db + JSON
+│   │   ├── sessions.py     # state.db + JSON transcripts
 │   │   ├── skills.py       # filesystem scan
-│   │   ├── memory.py       # .md files
-│   │   ├── processes.py    # OS processes
-│   │   ├── cron_jobs.py    # cron dir
-│   │   └── logs.py         # log tail
+│   │   ├── memory.py       # .md files (SOUL.md, MEMORY.md, USER.md)
+│   │   ├── processes.py    # OS processes + gateway status
+│   │   ├── cron_jobs.py    # cron dir scan
+│   │   ├── logs.py         # log tail
+│   │   └── backup.py       # snapshot list + rsync trigger
 │   ├── routers/            # FastAPI endpoints
-│   └── static/             # Frontend (vanilla JS)
+│   │   ├── agents.py       # GET /api/agents
+│   │   ├── system.py
+│   │   ├── sessions.py
+│   │   ├── skills.py
+│   │   ├── memory.py
+│   │   ├── processes.py
+│   │   ├── cron.py
+│   │   ├── logs.py
+│   │   └── backup.py
+│   └── static/             # Frontend (vanilla JS, no frameworks)
+│       ├── index.html
+│       ├── favicon.svg
+│       ├── css/app.css
+│       └── js/
+│           ├── app.js      # Shell: routing, agent selector, fetchApi, SSE helper
+│           ├── system.js   # CPU/RAM/disk gauges + Chart.js history
+│           ├── sessions.js # Session list + transcript modal
+│           ├── skills.js   # Category tree + skill detail viewer
+│           ├── memory.js   # File list + inline editor
+│           ├── processes.js
+│           ├── cron.js     # Job list + output viewer
+│           ├── logs.js     # File list + live-tail viewer
+│           └── backup.js   # Snapshots + run + restore
 └── tests/
 ```
 
