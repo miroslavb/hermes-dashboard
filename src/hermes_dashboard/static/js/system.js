@@ -121,7 +121,7 @@
         else gauges.diskBar.fill.style.background = "var(--green)";
 
         // Network
-        gauges.netVal.textContent = "↑" + data.net_sent_mb.toFixed(1) + " MB  ↓" + data.net_recv_mb.toFixed(1) + " MB";
+        gauges.netVal.textContent = "↑" + data.net_sent_gb.toFixed(2) + " GB  ↓" + data.net_recv_gb.toFixed(2) + " GB";
 
         // Uptime
         const days = Math.floor(data.uptime_seconds / 86400);
@@ -167,7 +167,7 @@
         // Row 2: Network + Uptime + Info
         const row2 = document.createElement("div");
         row2.className = "grid";
-        const netGauge = createGauge("Network", "↑0 MB  ↓0 MB", "", "var(--yellow)");
+        const netGauge = createGauge("Network", "↑0 GB  ↓0 GB", "", "var(--yellow)");
         gauges.netVal = netGauge.val;
         const upGauge = createGauge("Uptime", "0d 0h 0m", "", "var(--green)");
         gauges.uptimeVal = upGauge.val;

@@ -101,42 +101,62 @@
     window.panels = window.panels || {};
     window.panels.skills = function (app, fetchApi) {
         app.innerHTML = "";
+        let activeAgent = "";
 
         function showCategories() {
             app.innerHTML = '<p class="stat-label" style="padding:1rem;">Loading categories...</p>';
-            fetchApi("/api/skills").then((cats) => {
+            fetchApi("/api/skills").then((data) => {
                 app.innerHTML = "";
-                if (!cats || cats.length === 0) {
-                    app.innerHTML = '<div class="card"><p class="stat-label">No skill categories found.</p></div>';
+                // Multi-agent: {hermes: {name, categories:[...]}, hermes2: {...}}
+                const agentIds = Object.keys(data);
+                if (!agentIds || agentIds.length === 0) {
+                    app.innerHTML = '<div class="card"><p class="stat-label">No skills found.</p></div>';
                     return;
                 }
-                app.appendChild(buildCategoryGrid(cats, showSkillList));
-            }).catch(() => {
-                app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load skills.</p></div>';
+                for (const agentId of agentIds) {
+                    const ag = data[agentId];
+                    const cats = ag.categories || [];
+                    if (cats.length === 0) continue;
+                    // Agent header
+                    const h = document.createElement("h3");
+                    h.textContent = "🧠 " + ag.name;
+                    h.style.margin = "1rem 0 0.5rem";
+                    app.appendChild(h);
+                    // Wrap showSkillList per agent
+                    const grid = buildCategoryGrid(cats, (catName) => showSkillList(agentId, catName));
+                    app.appendChild(grid);
+                }
+            }).catch((err) => {
+                console.error("[Skills] Failed to load:", err);
+                app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load skills: ' + (err.message || err) + '</p></div>';
             });
         }
 
-        function showSkillList(category) {
+        function showSkillList(agentId, category) {
             app.innerHTML = '<p class="stat-label" style="padding:1rem;">Loading skills...</p>';
-            fetchApi("/api/skills/" + encodeURIComponent(category)).then((skills) => {
+            const agentQ = agentId ? ("?agent=" + encodeURIComponent(agentId)) : "";
+            fetchApi("/api/skills/" + encodeURIComponent(category) + agentQ).then((skills) => {
                 app.innerHTML = "";
                 if (!skills || skills.length === 0) {
                     app.innerHTML = '<div class="card"><p class="stat-label">No skills in this category.</p></div>';
                     return;
                 }
-                app.appendChild(buildSkillList(skills, category, showSkillDetail, showCategories));
-            }).catch(() => {
-                app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load skills.</p></div>';
+                app.appendChild(buildSkillList(skills, category, (cat, name) => showSkillDetail(agentId, cat, name), showCategories));
+            }).catch((err) => {
+                console.error("[Skills] Failed to load category:", err);
+                app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load skills: ' + (err.message || err) + '</p></div>';
             });
         }
 
-        function showSkillDetail(category, name) {
+        function showSkillDetail(agentId, category, name) {
             app.innerHTML = '<p class="stat-label" style="padding:1rem;">Loading skill...</p>';
-            fetchApi("/api/skills/" + encodeURIComponent(category) + "/" + encodeURIComponent(name)).then((skill) => {
+            const agentQ = agentId ? ("?agent=" + encodeURIComponent(agentId)) : "";
+            fetchApi("/api/skills/" + encodeURIComponent(category) + "/" + encodeURIComponent(name) + agentQ).then((skill) => {
                 app.innerHTML = "";
-                app.appendChild(buildSkillViewer(skill, () => showSkillList(category)));
-            }).catch(() => {
-                app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load skill.</p></div>';
+                app.appendChild(buildSkillViewer(skill, () => showSkillList(agentId, category)));
+            }).catch((err) => {
+                console.error("[Skills] Failed to load skill:", err);
+                app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load skill: ' + (err.message || err) + '</p></div>';
             });
         }
 

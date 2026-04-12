@@ -9,31 +9,38 @@ from sse_starlette.sse import EventSourceResponse
 
 from hermes_dashboard.collectors.logs import list_log_files, tail_log
 from hermes_dashboard.config import settings
-from hermes_dashboard.schemas import LogFileInfo, LogTail
 
 router = APIRouter()
 
 
-@router.get("", response_model=list[LogFileInfo])
-async def get_log_files() -> list[LogFileInfo]:
-    return list_log_files()
+@router.get("")
+async def get_log_files(agent: str = Query("")) -> dict:
+    return list_log_files(agent_id=agent)
 
 
-@router.get("/{name}", response_model=LogTail)
-async def get_log_tail(name: str, lines: int = Query(100, ge=1, le=5000)) -> LogTail:
-    result = tail_log(name, lines=lines)
+@router.get("/{name}")
+async def get_log_tail(name: str, agent: str = Query(""), lines: int = Query(100, ge=1, le=5000)):
+    result = tail_log(name, agent_id=agent, lines=lines)
     if not result:
         raise HTTPException(404, "Log file not found")
     return result
 
 
 @router.get("/{name}/stream")
-async def stream_log(name: str) -> EventSourceResponse:
+async def stream_log(name: str, agent: str = Query("")) -> EventSourceResponse:
     if "/" in name or ".." in name:
         raise HTTPException(400, "Invalid filename")
 
-    path = settings.logs_dir / name
-    if not path.exists():
+    # Find log file in agent's logs dir
+    agents = settings.get_agents_for_query(agent)
+    path = None
+    for ag in agents:
+        p = ag.logs_dir / name
+        if p.exists():
+            path = p
+            break
+
+    if not path:
         raise HTTPException(404, "Log file not found")
 
     async def generator():
@@ -49,7 +56,6 @@ async def stream_log(name: str) -> EventSourceResponse:
                         for line in data.decode(errors="replace").splitlines():
                             yield {"data": line}
                 elif current_size < offset:
-                    # File was rotated
                     offset = 0
             except OSError:
                 pass

@@ -98,31 +98,48 @@
         app.innerHTML = '<p class="stat-label" style="padding:1rem;">Loading...</p>';
 
         Promise.all([
-            fetchApi("/api/cron").catch(() => []),
-            fetchApi("/api/cron/output").catch(() => []),
-        ]).then(([jobs, outputs]) => {
+            fetchApi("/api/cron").catch((e) => { console.error("[Cron] jobs error:", e); return {}; }),
+            fetchApi("/api/cron/output").catch((e) => { console.error("[Cron] output error:", e); return {}; }),
+        ]).then(([jobsData, outputsData]) => {
             app.innerHTML = "";
 
-            const jobsCard = document.createElement("div");
-            jobsCard.className = "card";
-            const jobsTitle = document.createElement("h2");
-            jobsTitle.textContent = "Scheduled Jobs";
-            jobsCard.appendChild(jobsTitle);
-
-            if (!jobs || jobs.length === 0) {
-                const empty = document.createElement("div");
-                empty.className = "stat-label";
-                empty.textContent = "No cron jobs configured.";
-                jobsCard.appendChild(empty);
+            // Multi-agent: {hermes: {jobs:[...], outputs:[...]}, hermes2: {...}}
+            const agentIds = Object.keys(jobsData);
+            if (!agentIds || agentIds.length === 0) {
+                app.innerHTML = '<div class="card"><p class="stat-label">No cron data found.</p></div>';
+                return;
             }
-            app.appendChild(jobsCard);
 
-            if (jobs && jobs.length > 0) {
-                app.appendChild(buildJobList(jobs));
+            for (const agentId of agentIds) {
+                const ag = jobsData[agentId];
+                const jobs = ag.jobs || [];
+
+                const agentH = document.createElement("h3");
+                agentH.textContent = "🧠 " + ag.name;
+                agentH.style.margin = "1rem 0 0.5rem";
+                app.appendChild(agentH);
+
+                if (jobs.length === 0) {
+                    const empty = document.createElement("div");
+                    empty.className = "card";
+                    empty.innerHTML = '<p class="stat-label">No cron jobs configured.</p>';
+                    app.appendChild(empty);
+                } else {
+                    app.appendChild(buildJobList(jobs));
+                }
             }
-            app.appendChild(buildOutputViewer(outputs));
-        }).catch(() => {
-            app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load cron data.</p></div>';
+
+            // Outputs (flat or per-agent)
+            const allOutputs = [];
+            for (const agentId of Object.keys(outputsData)) {
+                const out = outputsData[agentId];
+                if (Array.isArray(out)) allOutputs.push(...out);
+                else if (out && out.outputs) allOutputs.push(...out.outputs);
+            }
+            if (allOutputs.length) app.appendChild(buildOutputViewer(allOutputs));
+        }).catch((err) => {
+            console.error("[Cron] Failed:", err);
+            app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load cron data: ' + (err.message || err) + '</p></div>';
         });
     };
 })();

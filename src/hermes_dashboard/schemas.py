@@ -17,8 +17,8 @@ class SystemStatus(BaseModel):
     disk_total_gb: float
     disk_used_gb: float
     disk_percent: float
-    net_sent_mb: float
-    net_recv_mb: float
+    net_sent_gb: float
+    net_recv_gb: float
     uptime_seconds: float
     hostname: str
     os: str
@@ -32,11 +32,13 @@ class SessionSummary(BaseModel):
     channel: str | None = None
     message_count: int = 0
     file_size: int = 0
+    agent: str = ""
 
 
 class SessionDetail(BaseModel):
     id: str
     messages: list[dict[str, Any]] = []
+    agent: str = ""
 
 
 class SkillCategory(BaseModel):

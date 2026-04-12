@@ -104,21 +104,29 @@
         function showLogList() {
             if (sse) { sse.close(); sse = null; }
             app.innerHTML = '<p class="stat-label" style="padding:1rem;">Loading log files...</p>';
-            fetchApi("/api/logs").then((logs) => {
+            fetchApi("/api/logs").then((data) => {
                 app.innerHTML = "";
-                if (!logs || logs.length === 0) {
-                    app.innerHTML = '<div class="card"><p class="stat-label">No log files found.</p></div>';
-                    return;
+                // Multi-agent: {hermes: {name, files:[...]}, hermes2: {files:[...]}}
+                for (const agentId of Object.keys(data)) {
+                    const ag = data[agentId];
+                    const logs = ag.files || ag.logs || (Array.isArray(ag) ? ag : []);
+                    if (logs.length === 0) continue;
+                    const h = document.createElement("h3");
+                    h.textContent = "🧠 " + (ag.name || agentId);
+                    h.style.margin = "1rem 0 0.5rem";
+                    app.appendChild(h);
+                    app.appendChild(buildLogSelector(logs, (name) => showLog(agentId, name)));
                 }
-                app.appendChild(buildLogSelector(logs, showLog));
-            }).catch(() => {
-                app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load logs.</p></div>';
+            }).catch((err) => {
+                console.error("[Logs] Failed to load:", err);
+                app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load logs: ' + (err.message || err) + '</p></div>';
             });
         }
 
-        function showLog(name) {
+        function showLog(agentId, name) {
             app.innerHTML = '<p class="stat-label" style="padding:1rem;">Loading log...</p>';
-            fetchApi("/api/logs/" + encodeURIComponent(name) + "?lines=200").then((data) => {
+            const agentQ = agentId ? ("&agent=" + encodeURIComponent(agentId)) : "";
+            fetchApi("/api/logs/" + encodeURIComponent(name) + "?lines=200" + agentQ).then((data) => {
                 app.innerHTML = "";
                 if (!data) {
                     app.innerHTML = '<div class="card"><p class="stat-label">Log not found.</p></div>';
@@ -127,7 +135,8 @@
 
                 const { container, logBox } = buildLogViewer(name, data, showLogList, (startStream) => {
                     if (startStream) {
-                        sse = window.createSSE("/api/logs/" + encodeURIComponent(name) + "/stream", (line) => {
+                        const streamQ = agentId ? ("?agent=" + encodeURIComponent(agentId)) : "";
+                        sse = window.createSSE("/api/logs/" + encodeURIComponent(name) + "/stream" + streamQ, (line) => {
                             const div = document.createElement("div");
                             div.className = "line";
                             div.textContent = typeof line === "string" ? line : JSON.stringify(line);
@@ -143,8 +152,9 @@
                     }
                 });
                 app.appendChild(container);
-            }).catch(() => {
-                app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load log.</p></div>';
+            }).catch((err) => {
+                console.error("[Logs] Failed to load log:", err);
+                app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load log: ' + (err.message || err) + '</p></div>';
             });
         }
 

@@ -9,6 +9,7 @@
         "#/memory": "memory",
         "#/processes": "processes",
         "#/cron": "cron",
+        "#/backup": "backup",
         "#/logs": "logs",
     };
 
@@ -19,11 +20,39 @@
         ["#/memory", "🧠 Memory"],
         ["#/processes", "⚡ Processes"],
         ["#/cron", "⏰ Cron"],
+        ["#/backup", "💾 Backup"],
         ["#/logs", "📋 Logs"],
     ];
 
+    let currentAgent = ""; // empty = all agents
+    let agentsList = [];
+
     function initNav() {
         const nav = document.getElementById("nav");
+
+        // Agent selector
+        const agentSel = document.createElement("select");
+        agentSel.id = "agent-select";
+        agentSel.style.cssText = "margin-bottom:0.5rem;padding:0.3rem 0.5rem;background:var(--card-bg);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;font-size:0.8rem;";
+        agentSel.innerHTML = '<option value="">All agents</option>';
+        agentSel.addEventListener("change", () => {
+            currentAgent = agentSel.value;
+            onRouteChange();
+        });
+        nav.appendChild(agentSel);
+
+        // Load agents
+        fetchApi("/api/agents").then((data) => {
+            agentsList = data.agents || [];
+            agentsList.forEach((a) => {
+                const opt = document.createElement("option");
+                opt.value = a.id;
+                opt.textContent = a.name + ` (${a.session_count}💬 ${a.skill_count}🛠 ${a.cron_count}⏰)`;
+                agentSel.appendChild(opt);
+            });
+        }).catch(() => {});
+
+        // Nav links
         NAV_ITEMS.forEach(([href, label]) => {
             const a = document.createElement("a");
             a.href = href;
@@ -36,11 +65,24 @@
         return new URLSearchParams(window.location.search).get("token") || "";
     }
 
+    function agentParam() {
+        return currentAgent ? (currentAgent.includes("?") ? "&" : "?") + "agent=" + currentAgent : "";
+    }
+
     function apiPath(path) {
         const token = getToken();
-        if (!token) return path;
-        const sep = path.includes("?") ? "&" : "?";
-        return path + sep + "token=" + encodeURIComponent(token);
+        let result = path;
+        // Add agent param
+        if (currentAgent) {
+            const sep = result.includes("?") ? "&" : "?";
+            result += sep + "agent=" + encodeURIComponent(currentAgent);
+        }
+        // Add token
+        if (token) {
+            const sep = result.includes("?") ? "&" : "?";
+            result += sep + "token=" + encodeURIComponent(token);
+        }
+        return result;
     }
 
     async function fetchApi(path) {

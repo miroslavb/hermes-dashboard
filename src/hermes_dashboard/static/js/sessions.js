@@ -8,11 +8,12 @@
         return d.toLocaleDateString() + " " + d.toLocaleTimeString();
     }
 
-    function buildSessionList(sessions) {
+    function buildSessionList(sessions, onTranscript) {
         const list = document.createElement("div");
         sessions.forEach((s) => {
             const row = document.createElement("div");
-            row.className = "card";
+            row.className = "card session-card";
+            row.dataset.sessionId = s.id;
             row.style.cursor = "pointer";
             row.style.display = "flex";
             row.style.justifyContent = "space-between";
@@ -21,7 +22,7 @@
             const left = document.createElement("div");
             const idEl = document.createElement("div");
             idEl.style.fontWeight = "600";
-            idEl.textContent = "Session " + s.id.slice(0, 8);
+            idEl.textContent = "Session " + s.id.slice(0, 8) + (s.channel === "telegram" ? " 📱" : s.channel === "cli" ? " 💻" : "");
             const meta = document.createElement("div");
             meta.className = "stat-label";
             meta.textContent = formatDate(s.started_at) + " • " + (s.channel || "unknown");
@@ -42,9 +43,14 @@
 
             row.appendChild(left);
             row.appendChild(right);
-
-            row.addEventListener("click", () => loadTranscript(s.id));
             list.appendChild(row);
+        });
+        // Event delegation — single listener on the list container
+        list.addEventListener("click", (e) => {
+            const card = e.target.closest(".session-card");
+            if (card && card.dataset.sessionId) {
+                onTranscript(card.dataset.sessionId);
+            }
         });
         return list;
     }
@@ -107,9 +113,10 @@
                     content.innerHTML = '<div class="card"><p class="stat-label">No sessions found.</p></div>';
                     return;
                 }
-                content.appendChild(buildSessionList(sessions));
-            }).catch(() => {
-                content.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load sessions.</p></div>';
+                content.appendChild(buildSessionList(sessions, loadTranscript));
+            }).catch((err) => {
+                console.error("[Sessions] Failed to load:", err);
+                content.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load sessions: ' + (err.message || err) + '</p></div>';
             });
         }
 
@@ -122,8 +129,9 @@
                     return;
                 }
                 content.appendChild(buildTranscript(data.messages, () => loadSessions()));
-            }).catch(() => {
-                content.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load transcript.</p></div>';
+            }).catch((err) => {
+                console.error("[Sessions] Failed to load transcript:", err);
+                content.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load transcript: ' + (err.message || err) + '</p></div>';
             });
         }
 
