@@ -11,6 +11,8 @@
         "#/cron": "cron",
         "#/backup": "backup",
         "#/logs": "logs",
+        "#/rlm": "rlm",
+        "#/usage": "usage",
     };
 
     const NAV_ITEMS = [
@@ -22,6 +24,8 @@
         ["#/cron", "⏰ Cron"],
         ["#/backup", "💾 Backup"],
         ["#/logs", "📋 Logs"],
+        ["#/rlm", "🔄 RLM"],
+        ["#/usage", "🪙 Tokens"],
     ];
 
     let currentAgent = ""; // empty = all agents

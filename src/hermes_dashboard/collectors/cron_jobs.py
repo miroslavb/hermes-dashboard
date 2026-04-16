@@ -24,14 +24,31 @@ def list_cron_jobs(agent_id: str = "") -> dict:
                     continue
                 try:
                     data = json.loads(f.read_text())
-                    agent_data["jobs"].append({
-                        "id": data.get("id", f.stem),
-                        "name": data.get("name", f.stem),
-                        "schedule": data.get("schedule", ""),
-                        "prompt": data.get("prompt", "")[:200],
-                        "status": data.get("status", "active"),
-                        "last_run": data.get("last_run"),
-                    })
+                    # Handle jobs.json with {jobs: [...]} structure
+                    if f.name == "jobs.json" and isinstance(data, dict) and "jobs" in data:
+                        for job in data["jobs"]:
+                            schedule = job.get("schedule", "")
+                            # Schedule can be a dict with display field or a string
+                            if isinstance(schedule, dict):
+                                schedule = schedule.get("display", str(schedule))
+                            agent_data["jobs"].append({
+                                "id": job.get("id", ""),
+                                "name": job.get("name", ""),
+                                "schedule": schedule,
+                                "prompt": (job.get("prompt", "") or "")[:200],
+                                "status": "active" if job.get("enabled", True) and not job.get("paused_at") else "paused",
+                                "last_run": job.get("last_run_at"),
+                            })
+                    # Handle individual job files
+                    elif isinstance(data, dict):
+                        agent_data["jobs"].append({
+                            "id": data.get("id", f.stem),
+                            "name": data.get("name", f.stem),
+                            "schedule": data.get("schedule", ""),
+                            "prompt": (data.get("prompt", "") or "")[:200],
+                            "status": data.get("status", "active"),
+                            "last_run": data.get("last_run"),
+                        })
                 except (json.JSONDecodeError, OSError):
                     continue
 

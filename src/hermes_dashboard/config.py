@@ -35,6 +35,10 @@ class AgentConfig:
         return self.home / "cron"
 
     @property
+    def rlm_logs_dir(self) -> Path:
+        return self.home / "rlm_logs"
+
+    @property
     def state_db(self) -> Path:
         return self.home / "state.db"
 
@@ -65,6 +69,8 @@ class Settings:
         candidates = [
             AgentConfig(id="hermes", name="Hermes", home=Path.home() / ".hermes"),
             AgentConfig(id="hermes2", name="Hermes 2 (Tatiyana)", home=Path.home() / ".hermes-agent2"),
+            AgentConfig(id="hermes-rlm-repl", name="Hermes-REPL (RLM)", home=Path.home() / ".hermes-rlm-repl"),
+            AgentConfig(id="hermes3", name="Hermes3", home=Path.home() / ".hermes-hermes3"),
         ]
         self._agents = [a for a in candidates if a.exists()]
         return self._agents

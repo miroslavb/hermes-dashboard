@@ -67,6 +67,8 @@ def create_app() -> FastAPI:
     from hermes_dashboard.routers.system import router as system_router
     from hermes_dashboard.routers.backup import router as backup_router
     from hermes_dashboard.routers.agents import router as agents_router
+    from hermes_dashboard.routers.rlm import router as rlm_router
+    from hermes_dashboard.routers.usage import router as usage_router
 
     app.include_router(agents_router, prefix="/api/agents", tags=["agents"])
     app.include_router(system_router, prefix="/api/system", tags=["system"])
@@ -77,6 +79,8 @@ def create_app() -> FastAPI:
     app.include_router(cron_router, prefix="/api/cron", tags=["cron"])
     app.include_router(logs_router, prefix="/api/logs", tags=["logs"])
     app.include_router(backup_router, prefix="/api/backup", tags=["backup"])
+    app.include_router(rlm_router, prefix="/api/rlm", tags=["rlm"])
+    app.include_router(usage_router, prefix="/api/usage", tags=["usage"])
 
     # Health check (no auth required)
     @app.get("/health")

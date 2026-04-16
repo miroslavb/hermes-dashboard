@@ -73,21 +73,60 @@
         return card;
     }
 
+    let sseSource = null;
+
     window.panels = window.panels || {};
     window.panels.processes = function (app, fetchApi) {
         app.innerHTML = '<p class="stat-label" style="padding:1rem;">Loading...</p>';
 
-        Promise.all([
-            fetchApi("/api/processes").catch(() => []),
-            fetchApi("/api/processes/active").catch(() => []),
-        ]).then(([procs, active]) => {
+        // Close previous SSE if any
+        if (sseSource) { sseSource.close(); sseSource = null; }
+
+        // Container refs for live updates
+        let procsContainer = null;
+        let activeContainer = null;
+
+        function render(procs, active) {
             app.innerHTML = "";
             if (!procs || procs.length === 0) {
                 app.innerHTML = '<div class="card"><p class="stat-label">No process data available.</p></div>';
                 return;
             }
-            app.appendChild(buildProcessTable(procs));
-            app.appendChild(buildActiveSessions(active));
+            procsContainer = buildProcessTable(procs);
+            activeContainer = buildActiveSessions(active);
+            app.appendChild(procsContainer);
+            app.appendChild(activeContainer);
+        }
+
+        function updateProcs(procs) {
+            if (!procsContainer || !app.contains(procsContainer)) return;
+            const newTable = buildProcessTable(procs);
+            procsContainer.replaceWith(newTable);
+            procsContainer = newTable;
+        }
+
+        // Initial load
+        Promise.all([
+            fetchApi("/api/processes").catch(() => []),
+            fetchApi("/api/processes/active").catch(() => []),
+        ]).then(([procs, active]) => {
+            render(procs, active);
+
+            // Connect SSE for live process updates
+            const token = new URLSearchParams(window.location.search).get("token") || "";
+            const sseUrl = "/api/processes/stream" + (token ? "?token=" + encodeURIComponent(token) : "");
+            sseSource = new EventSource(sseUrl);
+            sseSource.onmessage = function (e) {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (Array.isArray(data)) {
+                        updateProcs(data);
+                    }
+                } catch (_) { /* ignore parse errors */ }
+            };
+            sseSource.onerror = function () {
+                // SSE will auto-reconnect
+            };
         }).catch(() => {
             app.innerHTML = '<div class="card"><p style="color:var(--red);">Failed to load processes.</p></div>';
         });
