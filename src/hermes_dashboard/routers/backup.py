@@ -31,3 +31,10 @@ class RestoreRequest(BaseModel):
 async def backup_restore(body: RestoreRequest):
     """Get restore command for a snapshot (does not execute)."""
     return backup_collector.get_restore_command(body.snapshot, body.target)
+
+
+@router.post("/refresh")
+async def backup_refresh():
+    """Refresh snapshot list from NAS (slow SSH call)."""
+    snapshots = backup_collector.list_snapshots(refresh=True)
+    return {"snapshots": snapshots, "count": len(snapshots)}
