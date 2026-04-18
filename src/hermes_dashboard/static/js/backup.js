@@ -46,11 +46,14 @@
             if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
         }
         if (data.last_backup_time) {
-            statusHtml += ` · Last: <strong>${esc(data.last_backup_time)}</strong>`;
+            statusHtml += ` · Current: <strong>${esc(data.last_backup_time)}</strong>`;
         }
         if (data.last_backup_result) {
             const ok = data.last_backup_result.includes("0 failed");
             statusHtml += ` · <span style="color:${ok ? 'var(--green)' : '#ef4444'};${ok ? '' : 'font-weight:600;'}">${esc(data.last_backup_result)}</span>`;
+        }
+        if (data.last_snapshot_time) {
+            statusHtml += ` · Snapshots: <strong>${esc(data.last_snapshot_time)}</strong>`;
         }
         statusHtml += data.cron_active
             ? ' · <span style="color:var(--green);">⏰ Cron active (03:00 UTC)</span>'

@@ -127,7 +127,7 @@ def get_status() -> dict:
     snapshots = list_snapshots(refresh=False)
     current = get_current_backup()
 
-    # Parse last backup time and result from log
+    # Parse last backup time and result from log (current sync backup)
     last_backup_time = None
     last_backup_result = None
     if BACKUP_LOG.exists():
@@ -141,11 +141,22 @@ def get_status() -> dict:
                 last_backup_time = line.strip().strip("=").strip()
                 break
 
+    # Parse last snapshot time from old incremental backup log
+    last_snapshot_time = None
+    old_log = Path("/root/.hermes/logs/nas-full-backup.log")
+    if old_log.exists():
+        old_lines = old_log.read_text(encoding="utf-8", errors="replace").split("\n")
+        for line in reversed(old_lines):
+            if "Snapshot:" in line or "=== Full Backup" in line:
+                last_snapshot_time = line.strip().strip("=").strip()
+                break
+
     return {
         "running": running,
         "log_tail": log_tail,
         "last_backup_time": last_backup_time,
         "last_backup_result": last_backup_result,
+        "last_snapshot_time": last_snapshot_time,
         "current": current,
         "snapshots": snapshots,
         "snapshot_count": len(snapshots),
