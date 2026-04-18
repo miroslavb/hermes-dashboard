@@ -36,15 +36,42 @@
         // Status bar
         const statusBar = document.createElement("div");
         statusBar.className = "card";
-        statusBar.style.cssText = "display:flex;align-items:center;gap:1rem;padding:1rem;";
+        statusBar.style.cssText = "display:flex;align-items:center;gap:1rem;padding:1rem;flex-wrap:wrap;";
+        let statusHtml = "";
         if (data.running) {
-            statusBar.innerHTML = '<span style="color:var(--green);font-weight:600;">● Backup running...</span>';
+            statusHtml = '<span style="color:var(--green);font-weight:600;">● Backup running...</span>';
             if (!refreshTimer) refreshTimer = setInterval(() => render(container, fetchApi), 10000);
         } else {
-            statusBar.innerHTML = `<span style="color:var(--text-secondary);">○ Idle</span> · <span>${data.snapshot_count} snapshot(s)</span>`;
+            statusHtml = '<span style="color:var(--text-secondary);">○ Idle</span>';
             if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
         }
+        if (data.last_backup_time) {
+            statusHtml += ` · Last: <strong>${esc(data.last_backup_time)}</strong>`;
+        }
+        if (data.last_backup_result) {
+            const ok = data.last_backup_result.includes("0 failed");
+            statusHtml += ` · <span style="color:${ok ? 'var(--green)' : '#ef4444'};${ok ? '' : 'font-weight:600;'}">${esc(data.last_backup_result)}</span>`;
+        }
+        statusHtml += data.cron_active
+            ? ' · <span style="color:var(--green);">⏰ Cron active (03:00 UTC)</span>'
+            : ' · <span style="color:#f59e0b;">⚠ Cron not set</span>';
+        statusBar.innerHTML = statusHtml;
         container.appendChild(statusBar);
+
+        // Current backup on NAS
+        if (data.current && data.current.exists) {
+            const currDiv = document.createElement("div");
+            currDiv.className = "card";
+            currDiv.style.cssText = "margin:1rem 0;padding:1rem;background:#1a2a1a;border:1px solid #2a4a2a;border-radius:6px;";
+            currDiv.innerHTML = `<strong>📦 Current Backup</strong> on NAS — Size: <strong>${esc(data.current.size)}</strong><br><span style="opacity:0.7">Dirs: ${(data.current.contents||[]).join(", ")}</span>`;
+            container.appendChild(currDiv);
+        } else if (data.current) {
+            const warnDiv = document.createElement("div");
+            warnDiv.className = "card";
+            warnDiv.style.cssText = "margin:1rem 0;padding:1rem;background:#2a1a1a;border:1px solid #4a2a2a;border-radius:6px;";
+            warnDiv.textContent = "⚠ No current backup found on NAS";
+            container.appendChild(warnDiv);
+        }
 
         // Run button
         const btnRow = document.createElement("div");
@@ -81,6 +108,25 @@
         refreshBtn.style.cssText = "padding:0.5rem 1rem;background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;";
         refreshBtn.onclick = () => render(container, fetchApi);
         btnRow.appendChild(refreshBtn);
+
+        // Refresh from NAS button
+        const nasRefreshBtn = document.createElement("button");
+        nasRefreshBtn.className = "btn";
+        nasRefreshBtn.textContent = "☁️ Refresh from NAS";
+        nasRefreshBtn.style.cssText = "padding:0.5rem 1rem;background:var(--card-bg);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;";
+        nasRefreshBtn.onclick = async () => {
+            nasRefreshBtn.disabled = true;
+            nasRefreshBtn.textContent = "⏳ Loading...";
+            try {
+                await fetchApi("/api/backup/refresh", "POST");
+                render(container, fetchApi);
+            } catch (e) {
+                alert("Error: " + e.message);
+            }
+            nasRefreshBtn.disabled = false;
+            nasRefreshBtn.textContent = "☁️ Refresh from NAS";
+        };
+        btnRow.appendChild(nasRefreshBtn);
 
         container.appendChild(btnRow);
 

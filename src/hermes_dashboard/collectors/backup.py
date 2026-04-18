@@ -7,14 +7,16 @@ import subprocess
 import time
 from pathlib import Path
 
-BACKUP_SCRIPT = Path("/root/.hermes/scripts/nas-full-backup.sh")
-BACKUP_LOG = Path("/root/.hermes/logs/nas-full-backup.log")
+BACKUP_SCRIPT = Path("/root/.hermes/scripts/nas-backup.sh")
+BACKUP_LOG = Path("/root/.hermes/logs/nas-backup.log")
 NAS_IP = "100.97.192.84"
 NAS_USER = "bereft"
 NAS_PASS = "Nhmft1378"
-SNAP_BASE = "/volume1/Backups/hermes/snapshots"
+NAS_BASE = "/volume1/Backups/hermes"
+SNAP_BASE = f"{NAS_BASE}/snapshots"
+CURRENT_DIR = f"{NAS_BASE}/current"
 
-_SSH_OPTS = "-o StrictHostKeyChecking=no -o ConnectTimeout=10"
+_SSH_OPTS = "-o StrictHostKeyChecking=no -o ConnectTimeout=5"
 
 
 def _ssh_cmd(remote_cmd: str) -> str:
@@ -28,7 +30,7 @@ def is_running() -> bool:
     """Check if rsync backup is currently running."""
     try:
         out = subprocess.check_output(
-            ["pgrep", "-f", "rsync.*snapshots"], text=True, timeout=5
+            ["pgrep", "-f", "rsync.*(snapshots|current)"], text=True, timeout=5
         ).strip()
         return bool(out)
     except subprocess.CalledProcessError:
@@ -84,7 +86,7 @@ def list_snapshots(refresh: bool = False) -> list[dict]:
         try:
             size_raw = subprocess.check_output(
                 _ssh_cmd(f"du -sh {snap_path} 2>/dev/null | cut -f1"),
-                shell=True, text=True, timeout=8,
+                shell=True, text=True, timeout=5,
             ).strip()
         except Exception:
             size_raw = "?"
@@ -99,19 +101,56 @@ def list_snapshots(refresh: bool = False) -> list[dict]:
     return snapshots
 
 
+def get_current_backup() -> dict:
+    """Get info about the current backup on NAS. Uses cache to avoid slow SSH."""
+    cache = Path("/root/.hermes/logs/nas-current-size.txt")
+    if cache.exists():
+        size = cache.read_text().strip()
+        return {"exists": True, "size": size, "contents": ["root", "etc", "tmp"]}
+    return {"exists": False}
+
+
+def get_cron_active() -> bool:
+    """Check if backup cron job is configured."""
+    try:
+        out = subprocess.check_output("crontab -l 2>/dev/null", shell=True, text=True, timeout=5).strip()
+        return "nas-backup" in out
+    except Exception:
+        return False
+
+
 def get_status() -> dict:
-    """Full backup status. Avoids SSH when backup is running."""
+    """Full backup status. Avoids SSH calls — uses cache for NAS data."""
     running = is_running()
     log_tail = get_log_tail()
-    # Skip SSH when backup is running — use cache only
-    snapshots = list_snapshots(refresh=not running)
+    # Use cache only — SSH to NAS is too slow for dashboard
+    snapshots = list_snapshots(refresh=False)
+    current = get_current_backup()
+
+    # Parse last backup time and result from log
+    last_backup_time = None
+    last_backup_result = None
+    if BACKUP_LOG.exists():
+        lines = BACKUP_LOG.read_text(encoding="utf-8", errors="replace").split("\n")
+        for line in reversed(lines):
+            if "Done:" in line and "ok" in line:
+                last_backup_result = line.strip()
+                break
+        for line in reversed(lines):
+            if line.strip().startswith("=== ") and "Backup" in line:
+                last_backup_time = line.strip().strip("=").strip()
+                break
 
     return {
         "running": running,
         "log_tail": log_tail,
+        "last_backup_time": last_backup_time,
+        "last_backup_result": last_backup_result,
+        "current": current,
         "snapshots": snapshots,
         "snapshot_count": len(snapshots),
         "script_exists": BACKUP_SCRIPT.exists(),
+        "cron_active": get_cron_active(),
     }
 
 
